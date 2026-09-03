@@ -32,7 +32,8 @@ Elle fonctionne **hors-ligne** et **sans compte** : toutes les données restent 
 - **Stats** : graphe des 14 derniers jours (valeur affichée, vert à 100 %), répartition par priorité, totaux (tâches faites, pomodoros).
 - **Confettis + son** quand la journée atteint 100 %.
 - **Thème clair / sombre / automatique**, **vibrations**, **sons** réglables.
-- **Sauvegarde** : export / import d'un fichier `.json`, et « tout effacer ».
+- **Sauvegarde** : télécharger / copier le texte / restaurer (fichier ou collé), rappel si >14 jours, stockage persistant, et « tout effacer ».
+- **Installation** : bouton dédié dans les réglages (Android) ou instructions (iPhone), + bannière d'accueil.
 - Vue **Semaine** : les 7 prochains jours + les tâches planifiées au-delà.
 
 ---
@@ -103,6 +104,16 @@ Rattrapage à la réouverture :
 | `make_icons.py` | Régénère les icônes (`python make_icons.py`) |
 | `.claude/launch.json` | Config de prévisualisation locale |
 
+## Installer sur le téléphone
+Depuis l'app : **Réglages → Installer sur le téléphone**.
+- **Android / Chrome** : bouton « Installer » (ou la bannière en haut de la vue Aujourd'hui).
+- **iPhone / Safari** : bouton *Partager* ⬆︎ → *Sur l'écran d'accueil* (rappel affiché dans les réglages).
+
 ## Sauvegarde des données
-Les données vivent dans le `localStorage` du navigateur où l'app est installée.
-Pense à faire **Réglages → Sauvegarde → Exporter** de temps en temps, surtout avant de changer de téléphone ou de vider le cache.
+Les données vivent dans le `localStorage` du navigateur où l'app est ouverte. **Elles survivent aux mises à jour de l'app** (même origine), mais pas au vidage du cache ni à un changement de téléphone.
+
+Dans **Réglages → Sauvegarde des données** :
+- **Télécharger** un fichier `.json`, ou **Copier le texte** (pratique sur mobile : colle-le dans un mail ou tes notes).
+- **Restaurer** depuis un fichier ou en collant le texte.
+- **Protéger de l'effacement** : demande au navigateur un stockage persistant (souvent accordé si l'app est installée).
+- Le sous-titre indique la date de la dernière sauvegarde ; un bandeau le rappelle si ça fait plus de 14 jours.

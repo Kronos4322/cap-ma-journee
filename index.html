@@ -382,6 +382,29 @@
   .link-btn { color: var(--accent); font-weight: 600; }
   .link-btn.danger { color: var(--red); }
 
+  .set-block { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .set-block .lbl { font-weight: 600; margin-bottom: 8px; }
+  .set-block .lbl small { display: block; color: var(--text-dim); font-weight: 400; font-size: .78rem; }
+  .backup-grp { margin-top: 10px; }
+  .backup-grp-lbl {
+    display: block; font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--text-dim); margin-bottom: 5px;
+  }
+  .backup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .backup-actions .link-btn {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 12px; font-size: .85rem;
+  }
+  .set-note {
+    margin-top: 10px; font-size: .76rem; color: var(--text-dim); line-height: 1.45;
+  }
+  .paste-wrap { margin-top: 10px; }
+  .paste-wrap textarea {
+    width: 100%; min-height: 90px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface-2); padding: 8px 10px; font-size: .82rem; outline: none; resize: vertical;
+    margin-bottom: 8px;
+  }
+
   /* ===================== Alarme plein écran ===================== */
   .alarm-screen {
     position: fixed; inset: 0; z-index: 100; background: linear-gradient(160deg, #6366f1, #8b5cf6);
@@ -417,7 +440,9 @@
   }
   .hint b { color: var(--text); }
   .hint .hint-txt { flex: 1; }
+  .hint .hint-act { flex: none; font-weight: 800; color: var(--accent); padding: 0 2px; }
   .hint .hint-x { flex: none; color: var(--text-dim); font-size: 1rem; line-height: 1; padding: 0 2px; }
+  .hint + .hint { margin-top: -4px; }
 
   /* Bouton de fermeture de la feuille réglages */
   .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -614,6 +639,10 @@
         <option value="dark">Sombre</option>
       </select>
     </div>
+    <div class="set-row" id="installRow" hidden>
+      <div class="lbl">Installer sur le téléphone <small id="installSub">Ajoute Cap à ton écran d'accueil</small></div>
+      <button class="link-btn" id="btnInstall">Installer</button>
+    </div>
     <div class="set-row">
       <div class="lbl">Notifications <small>Rappels d'heure &amp; fin de minuteur</small></div>
       <button class="link-btn" id="setNotif">Activer</button>
@@ -637,12 +666,38 @@
         <input type="number" id="setBreak" min="1" max="30" value="5" />
       </div>
     </div>
-    <div class="set-row">
-      <div class="lbl">Sauvegarde</div>
-      <div style="display:flex;gap:14px">
-        <button class="link-btn" id="setExport">Exporter</button>
-        <button class="link-btn" id="setImport">Importer</button>
+    <div class="set-block">
+      <div class="lbl">Sauvegarde des données
+        <small id="backupSub">Aucune sauvegarde effectuée</small>
       </div>
+      <div class="backup-grp"><span class="backup-grp-lbl">Sauvegarder</span>
+        <div class="backup-actions">
+          <button class="link-btn" id="setExport">⬇︎ Télécharger</button>
+          <button class="link-btn" id="setCopy">⧉ Copier le texte</button>
+        </div>
+      </div>
+      <div class="backup-grp"><span class="backup-grp-lbl">Restaurer</span>
+        <div class="backup-actions">
+          <button class="link-btn" id="setImport">📁 Depuis un fichier</button>
+          <button class="link-btn" id="setPaste">📋 Coller un texte</button>
+        </div>
+      </div>
+      <div class="paste-wrap" id="pasteWrap" hidden>
+        <textarea id="pasteBox" placeholder="Colle ici le contenu d'une sauvegarde (texte copié)…"></textarea>
+        <div class="backup-actions">
+          <button class="link-btn" id="pasteConfirm">Restaurer</button>
+          <button class="link-btn" id="pasteCancel">Annuler</button>
+        </div>
+      </div>
+      <div class="set-note">
+        Tes tâches vivent uniquement dans ce navigateur. Exporte ou copie ta sauvegarde
+        de temps en temps — surtout avant de changer de téléphone ou de vider le cache.
+        Elle n'est pas affectée par les mises à jour de l'app.
+      </div>
+    </div>
+    <div class="set-row">
+      <div class="lbl">Protéger de l'effacement <small id="persistSub">Demande au navigateur de ne pas vider les données</small></div>
+      <button class="link-btn" id="setPersist">Activer</button>
     </div>
     <div class="set-row">
       <div class="lbl">Tout effacer <small>Supprime toutes les données de l'app</small></div>
@@ -687,6 +742,7 @@
     alarms: [],           // {id, time:"HH:MM", label, days:[0-6], enabled, lastFired}
     streak: { current: 0, best: 0, lastWin: null },
     totals: { pomodoros: 0 },
+    lastBackup: 0,        // horodatage du dernier export / copie
     settings: {
       theme: "auto", sound: true, vibrate: true, carryOver: true,
       notif: false, work: 25, brk: 5
@@ -745,6 +801,7 @@
         lastFired: a.lastFired || null
       };
     }) : [];
+    st.lastBackup = +st.lastBackup || 0;
     if (!st.streak || typeof st.streak !== "object") st.streak = clone(DEFAULT.streak);
     st.streak.current = +st.streak.current || 0;
     st.streak.best = +st.streak.best || 0;
@@ -1035,7 +1092,7 @@
      refermer à chaque re-rendu. */
   var openTasks = Object.create(null);
   var currentView = "today";
-  var notifHintDismissed = false;
+  var dismissed = { notif: false, install: false, backup: false };
 
   /* Ne rend que la vue affichée (+ l'en-tête). Les autres vues sont
      régénérées à la volée quand on bascule dessus (switchView). */
@@ -1096,17 +1153,7 @@
     var goal = $("#dailyGoal");
     if (document.activeElement !== goal) goal.value = S.goals[t] || "";
 
-    var hint = $("#todayHint");
-    var wantsNotif = !S.settings.notif && !notifHintDismissed &&
-      list.some(function (x) { return x.time && !x.done; });
-    if (wantsNotif) {
-      hint.innerHTML = '<div class="hint">' +
-        '<span class="hint-txt">💡 <b>Active les notifications</b> (Réglages) pour recevoir tes rappels d\'heure.</span>' +
-        '<button class="hint-x" data-act="hintclose" aria-label="Masquer">✕</button></div>';
-      hint.querySelector("[data-act='hintclose']").onclick = function () {
-        notifHintDismissed = true; hint.innerHTML = "";
-      };
-    } else { hint.innerHTML = ""; }
+    renderBanners(list);
 
     var box = $("#todayList");
     if (!list.length) {
@@ -1128,6 +1175,46 @@
 
   function sectionLabel(txt, n) {
     return '<div class="section-label">' + txt + ' <span class="count">' + n + "</span></div>";
+  }
+
+  /* Bandeaux d'aide en haut de la vue Aujourd'hui (notifs, installation, sauvegarde).
+     Chacun est masquable pour la session. */
+  var BACKUP_MAX_AGE = 14 * 86400000;
+  function renderBanners(list) {
+    var host = $("#todayHint");
+    var items = [];
+
+    if (!S.settings.notif && !dismissed.notif && list.some(function (x) { return x.time && !x.done; })) {
+      items.push({ k: "notif", html: "💡 <b>Active les notifications</b> (Réglages) pour recevoir tes rappels d'heure." });
+    }
+    if (!isStandalone() && !dismissed.install && (deferredInstall || isIOS())) {
+      items.push({ k: "install", html: "📲 <b>Installe Cap sur ton téléphone</b> (Réglages ▸ Installer)." });
+    }
+    if (!dismissed.backup && S.tasks.length &&
+        (!S.lastBackup || Date.now() - S.lastBackup > BACKUP_MAX_AGE)) {
+      items.push({
+        k: "backup",
+        html: "💾 <b>Sauvegarde tes données</b> pour ne rien perdre.",
+        act: "Sauvegarder"
+      });
+    }
+
+    host.innerHTML = items.map(function (it) {
+      return '<div class="hint">' +
+        '<span class="hint-txt">' + it.html + "</span>" +
+        (it.act ? '<button class="hint-act" data-ban-act="' + it.k + '">' + it.act + "</button>" : "") +
+        '<button class="hint-x" data-ban-x="' + it.k + '" aria-label="Masquer">✕</button></div>';
+    }).join("");
+
+    host.querySelectorAll("[data-ban-x]").forEach(function (b) {
+      b.onclick = function () { dismissed[b.getAttribute("data-ban-x")] = true; renderBanners(tasksOf(today())); };
+    });
+    host.querySelectorAll("[data-ban-act]").forEach(function (b) {
+      b.onclick = function () {
+        var k = b.getAttribute("data-ban-act");
+        if (k === "backup") exportBackup();
+      };
+    });
   }
 
   function esc(s) {
@@ -1737,6 +1824,9 @@
     $("#setWork").value = S.settings.work;
     $("#setBreak").value = S.settings.brk;
     $("#setNotif").textContent = (window.Notification && Notification.permission === "granted") ? "Activées ✅" : "Activer";
+    syncInstallUI();
+    syncBackupUI();
+    syncPersistUI();
     applyTheme();
   }
   function applyTheme() {
@@ -1777,50 +1867,184 @@
   });
   $("#setNotif").addEventListener("click", requestNotif);
 
-  $("#setExport").addEventListener("click", function () {
+  /* ---- Sauvegarde ---- */
+  function markBackup() {
+    S.lastBackup = Date.now(); save(); syncBackupUI();
+    if (currentView === "today") renderBanners(tasksOf(today()));
+  }
+  function backupText() { return JSON.stringify(S); }
+
+  function exportBackup() {
     var blob = new Blob([JSON.stringify(S, null, 2)], { type: "application/json" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url; a.download = "cap-sauvegarde-" + today() + ".json";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    toast("Sauvegarde exportée");
+    markBackup();
+    toast("Fichier de sauvegarde téléchargé");
+  }
+
+  function applyBackup(text) {
+    var data = JSON.parse(text);
+    if (!data || !Array.isArray(data.tasks)) throw new Error("format");
+    S = migrate(deepMerge(clone(DEFAULT), data));
+    openTasks = Object.create(null);
+    save(); syncSettingsUI(); renderAll();
+    toast("Sauvegarde restaurée ✅");
+    closeSettings();
+  }
+
+  function fmtAgo(ts) {
+    if (!ts) return "aucune sauvegarde effectuée";
+    var d = Math.floor((Date.now() - ts) / 86400000);
+    if (d <= 0) return "dernière sauvegarde : aujourd'hui";
+    if (d === 1) return "dernière sauvegarde : hier";
+    return "dernière sauvegarde : il y a " + d + " jours";
+  }
+  function syncBackupUI() {
+    var sub = $("#backupSub");
+    if (sub) {
+      sub.textContent = fmtAgo(S.lastBackup);
+      sub.style.color = (!S.lastBackup || Date.now() - S.lastBackup > BACKUP_MAX_AGE) ? "var(--red)" : "var(--text-dim)";
+    }
+  }
+
+  $("#setExport").addEventListener("click", exportBackup);
+  $("#setCopy").addEventListener("click", function () {
+    var txt = backupText();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function () {
+        markBackup();
+        toast("Sauvegarde copiée — colle-la dans tes notes ou un mail");
+      }).catch(function () { fallbackCopy(txt); });
+    } else { fallbackCopy(txt); }
   });
+  function fallbackCopy(txt) {
+    var ta = $("#pasteBox");
+    $("#pasteWrap").hidden = false;
+    ta.value = txt; ta.focus(); ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    if (ok) { markBackup(); toast("Sauvegarde copiée"); }
+    else toast("Sélectionne le texte affiché et copie-le à la main");
+  }
   $("#setImport").addEventListener("click", function () { $("#importFile").click(); });
   $("#importFile").addEventListener("change", function (e) {
     var f = e.target.files[0]; if (!f) return;
     var r = new FileReader();
     r.onload = function () {
-      try {
-        var data = JSON.parse(r.result);
-        if (!data || !Array.isArray(data.tasks)) throw new Error("format");
-        S = migrate(deepMerge(clone(DEFAULT), data));
-        save(); syncSettingsUI(); renderAll();
-        toast("Sauvegarde importée ✅");
-        $("#settingsSheet").classList.remove("open");
-      } catch (err) { toast("Fichier invalide"); }
+      try { applyBackup(r.result); }
+      catch (err) { toast("Fichier invalide"); }
     };
     r.readAsText(f);
     e.target.value = "";
   });
+  $("#setPaste").addEventListener("click", function () {
+    $("#pasteWrap").hidden = false;
+    $("#pasteBox").value = "";
+    $("#pasteBox").focus();
+  });
+  $("#pasteCancel").addEventListener("click", function () { $("#pasteWrap").hidden = true; });
+  $("#pasteConfirm").addEventListener("click", function () {
+    try { applyBackup($("#pasteBox").value.trim()); $("#pasteWrap").hidden = true; }
+    catch (err) { toast("Texte de sauvegarde invalide"); }
+  });
+
+  /* ---- Protection contre l'effacement (stockage persistant) ---- */
+  function syncPersistUI() {
+    var btn = $("#setPersist"), sub = $("#persistSub");
+    if (!navigator.storage || !navigator.storage.persist) {
+      btn.textContent = "—"; btn.disabled = true;
+      sub.textContent = "Non disponible sur ce navigateur"; return;
+    }
+    navigator.storage.persisted().then(function (p) {
+      btn.textContent = p ? "Protégé ✅" : "Activer";
+      sub.textContent = p
+        ? "Le navigateur ne videra pas les données automatiquement"
+        : "Demande au navigateur de ne pas vider les données";
+    });
+  }
+  $("#setPersist").addEventListener("click", function () {
+    if (!navigator.storage || !navigator.storage.persist) return;
+    navigator.storage.persist().then(function (granted) {
+      syncPersistUI();
+      toast(granted
+        ? "Données protégées ✅"
+        : "Refusé par le navigateur — installe l'app pour l'obtenir");
+    });
+  });
+
   $("#setWipe").addEventListener("click", function () {
     if (!confirm("Effacer toutes les tâches, stats et réglages ? Action irréversible.")) return;
     localStorage.removeItem(KEY);
     S = clone(DEFAULT);
-    openTasks = Object.create(null); notifHintDismissed = false;
+    openTasks = Object.create(null);
+    dismissed = { notif: false, install: false, backup: false };
     save(); syncSettingsUI(); renderAll();
-    $("#settingsSheet").classList.remove("open");
+    closeSettings();
     toast("Tout a été effacé");
+  });
+
+  /* ============================================================
+     INSTALLATION (ajout à l'écran d'accueil)
+  ============================================================ */
+  var deferredInstall = null;
+  function isStandalone() {
+    return matchMedia("(display-mode: standalone)").matches ||
+      matchMedia("(display-mode: minimal-ui)").matches ||
+      window.navigator.standalone === true;
+  }
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+  function syncInstallUI() {
+    var row = $("#installRow"), btn = $("#btnInstall"), sub = $("#installSub");
+    if (isStandalone()) {
+      row.hidden = false; btn.hidden = true;
+      sub.textContent = "Cap est installée sur ton écran d'accueil ✅";
+    } else if (deferredInstall) {
+      row.hidden = false; btn.hidden = false; btn.textContent = "Installer";
+      sub.textContent = "Ajoute Cap à ton écran d'accueil";
+    } else if (isIOS()) {
+      row.hidden = false; btn.hidden = true;
+      sub.textContent = "iPhone : bouton Partager ⬆︎ puis « Sur l'écran d'accueil »";
+    } else {
+      row.hidden = false; btn.hidden = true;
+      sub.textContent = "Menu du navigateur → « Ajouter à l'écran d'accueil »";
+    }
+  }
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    deferredInstall = e;
+    syncInstallUI();
+    if (currentView === "today") renderBanners(tasksOf(today()));
+  });
+  window.addEventListener("appinstalled", function () {
+    deferredInstall = null; dismissed.install = true;
+    syncInstallUI();
+    if (currentView === "today") renderBanners(tasksOf(today()));
+    toast("Cap est installée 🎉");
+  });
+  $("#btnInstall").addEventListener("click", function () {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    deferredInstall.userChoice.then(function (res) {
+      if (res && res.outcome === "accepted") toast("Installation en cours…");
+      deferredInstall = null; syncInstallUI();
+      if (currentView === "today") renderBanners(tasksOf(today()));
+    });
   });
 
   /* ============================================================
      AJOUT RAPIDE
   ============================================================ */
   var qPrio = "orange";
-  document.querySelectorAll(".prio-dots button").forEach(function (b) {
+  document.querySelectorAll(".quick .prio-dots button").forEach(function (b) {
     b.addEventListener("click", function () {
       qPrio = b.getAttribute("data-p");
-      document.querySelectorAll(".prio-dots button").forEach(function (x) {
+      document.querySelectorAll(".quick .prio-dots button").forEach(function (x) {
         x.setAttribute("aria-pressed", x === b ? "true" : "false");
       });
     });
@@ -1951,6 +2175,12 @@
   renderAll();
   renderTimer();
   checkReminders();
+
+  // Demande discrète de stockage persistant (souvent accordée si l'app est installée
+  // ou utilisée régulièrement) — réduit le risque d'effacement automatique.
+  if (navigator.storage && navigator.storage.persist && navigator.storage.persisted) {
+    navigator.storage.persisted().then(function (p) { if (!p) navigator.storage.persist().catch(function () {}); });
+  }
 
   var params = new URLSearchParams(location.search);
   if (params.get("view") === "focus") switchView("focus");
