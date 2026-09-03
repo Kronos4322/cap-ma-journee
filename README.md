@@ -8,8 +8,9 @@ Elle fonctionne **hors-ligne** et **sans compte** : toutes les données restent 
 ## Ce que fait l'app
 
 ### L'essentiel demandé
+- **Accueil** : vue d'ensemble de la semaine — récap (nb de tâches, à heure fixe, en retard, prochain rappel) puis chaque jour avec sa date, ses tâches et leurs heures. Ajout d'une tâche par jour. C'est l'écran d'ouverture.
 - **Objectifs de la journée** : ajout ultra-rapide, une ligne « objectif principal du jour ».
-- **Taux de réussite** : anneau de progression du jour + moyennes 7 jours et 30 jours.
+- **Taux de réussite** : anneau de progression du jour + moyennes 7 jours et 30 jours (onglet « Aujourd'hui »).
 - **Classement par couleur** :
   - 🟢 **Vert** : pas urgent
   - 🟠 **Orange** : à traiter
@@ -17,14 +18,15 @@ Elle fonctionne **hors-ligne** et **sans compte** : toutes les données restent 
   Les tâches sont triées automatiquement (rouge en haut) et bordées de leur couleur.
 
 ### Les fonctionnalités en plus (repérées sur les meilleures apps 2026)
-- **Rappels à l'heure** : notification quand une tâche a une heure. Étiquette orange si l'échéance approche, rouge au-delà de 15 min de retard.
+- **Rappels à l'heure** : notification quand une tâche a une heure. **Choix du moment** dans les détails (à l'heure, 5/10/15/30 min avant, 1 ou 2 h avant, la veille). Étiquette orange si l'échéance approche, rouge au-delà de 15 min de retard.
+- **Sonnerie personnalisée** : Réglages → *Sonnerie d'alarme → Choisir un son* → un extrait audio de ton téléphone (mp3, m4a… ≤ ~1,5 Mo). Boutons *Écouter* / *Retirer*. Utilisée par l'alarme plein écran ; sinon bips par défaut.
 - **Réveil / alarmes** : plusieurs alarmes récurrentes (jours de la semaine), écran plein écran qui sonne + vibre, bouton « Rappel dans 5 min ». Plein écran seulement si l'alarme est à l'heure (±5 min) ; sinon simple notification « alarme manquée ».
-- **Alarme sur une tâche** : une tâche importante peut déclencher le réveil plein écran à son heure.
+- **Alarme (sonnerie) sur une tâche** : bouton « ⏰ Sonnerie » dans les détails — déclenche le plein écran au moment du rappel choisi.
 - **Tâches répétées** : chaque jour / jours ouvrés / chaque semaine (la suivante se recrée à la validation, jamais dans le passé).
 - **Report automatique** : le matin, les tâches non faites de la veille passent à aujourd'hui.
 - **Minuteur Focus (Pomodoro)** : 25/5 réglable, longue pause toutes les 4 sessions, garde l'écran allumé, compte les pomodoros par tâche. Reste juste même écran verrouillé (basé sur l'horloge réelle).
 - **Titre modifiable**, **sous-tâches**, **notes**, **dupliquer**, **repousser à demain** ou **à une date précise**.
-- **Ajout par jour** directement depuis la vue Semaine.
+- **Ajout par jour** directement depuis l'Accueil.
 - **Annuler** une suppression de tâche (bouton dans la notification en bas).
 - **Export calendrier (.ics)** par tâche : pour un rappel système fiable même app fermée (utile sur iPhone).
 - **Actions dans les notifications de rappel** : « ✓ Terminer » / « ⏰ +10 min » sans ouvrir l'app.
@@ -35,7 +37,7 @@ Elle fonctionne **hors-ligne** et **sans compte** : toutes les données restent 
 - **Points de restauration** internes : instantanés de l'app (auto quotidien + avant effacement/restauration), restaurables en un tap, aucun fichier.
 - **Protection anti-effacement** (stockage persistant) et **export/import fichier** pour changer de téléphone.
 - **Installation** : bouton dédié dans les réglages (Android) ou instructions (iPhone), + bannière d'accueil.
-- Vue **Semaine** : les 7 prochains jours + les tâches planifiées au-delà.
+- 4 onglets : **Accueil** (semaine) · **Aujourd'hui** · **Focus** · **Stats**.
 
 ---
 

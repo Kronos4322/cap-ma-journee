@@ -263,7 +263,22 @@
   }
   .empty .big { font-size: 2.5rem; margin-bottom: 8px; }
 
-  /* ===================== Vue Semaine ===================== */
+  /* ===================== Vue Accueil (semaine) ===================== */
+  .home-summary { padding: 14px 16px; }
+  .home-summary .hs-title { font-weight: 800; font-size: 1.05rem; margin-bottom: 10px; }
+  .home-summary .hs-stats { display: flex; gap: 8px; }
+  .home-summary .hs-stats div {
+    flex: 1; background: var(--surface-2); border-radius: 12px; padding: 8px 6px; text-align: center;
+  }
+  .home-summary .hs-stats b { display: block; font-size: 1.15rem; }
+  .home-summary .hs-stats b.hs-late { color: var(--red); }
+  .home-summary .hs-stats small { color: var(--text-dim); font-size: .7rem; }
+  .home-summary .hs-next {
+    margin-top: 10px; font-size: .82rem; color: var(--text-dim);
+    background: var(--accent-soft); border-radius: 10px; padding: 8px 10px;
+  }
+  .home-summary .hs-next b { color: var(--text); font-weight: 600; }
+
   .day-block { margin-bottom: 10px; }
   .day-head {
     display: flex; align-items: baseline; justify-content: space-between;
@@ -278,6 +293,7 @@
   }
   .day-list-mini .task-row { padding: 9px 10px; }
   .day-list-mini .task-title { font-size: .93rem; }
+  .tag.tag-time { font-weight: 700; }
   .day-add {
     display: flex; margin: 4px 2px 2px;
   }
@@ -500,8 +516,14 @@
     </div>
   </header>
 
+  <!-- ========== VUE ACCUEIL (semaine) ========== -->
+  <section class="view active" id="view-week">
+    <div class="card home-summary" id="homeSummary"></div>
+    <div id="weekList"></div>
+  </section>
+
   <!-- ========== VUE AUJOURD'HUI ========== -->
-  <section class="view active" id="view-today">
+  <section class="view" id="view-today">
     <div class="card progress-card">
       <div class="ring">
         <svg viewBox="0 0 120 120">
@@ -548,12 +570,6 @@
 
     <div id="todayHint"></div>
     <div id="todayList"></div>
-  </section>
-
-  <!-- ========== VUE SEMAINE ========== -->
-  <section class="view" id="view-week">
-    <div class="hint"><span class="hint-txt">Tes 7 prochains jours, plus les tâches planifiées ensuite. Touche une tâche pour la modifier.</span></div>
-    <div id="weekList"></div>
   </section>
 
   <!-- ========== VUE FOCUS ========== -->
@@ -622,8 +638,8 @@
 </div>
 
 <nav class="bottom">
-  <button data-view="today" class="active"><span class="ico">📋</span>Aujourd'hui</button>
-  <button data-view="week"><span class="ico">🗓️</span>Semaine</button>
+  <button data-view="week" class="active"><span class="ico">🏠</span>Accueil</button>
+  <button data-view="today"><span class="ico">📋</span>Aujourd'hui</button>
   <button data-view="focus"><span class="ico">⏱️</span>Focus</button>
   <button data-view="stats"><span class="ico">📊</span>Stats</button>
 </nav>
@@ -655,6 +671,14 @@
     <div class="set-row">
       <div class="lbl">Sons <small>Bips, minuteur, alarme</small></div>
       <button class="switch" id="setSound" role="switch" aria-label="Sons" aria-checked="true" aria-pressed="true"></button>
+    </div>
+    <div class="set-row">
+      <div class="lbl">Sonnerie d'alarme <small id="soundSub">Bips par défaut</small></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="link-btn" id="soundTest" hidden>Écouter</button>
+        <button class="link-btn" id="soundPick">Choisir un son</button>
+        <button class="link-btn danger" id="soundClear" hidden>Retirer</button>
+      </div>
     </div>
     <div class="set-row">
       <div class="lbl">Vibrations</div>
@@ -706,6 +730,7 @@
 </div>
 
 <input type="file" id="importFile" accept="application/json" hidden />
+<input type="file" id="soundFile" accept="audio/*" hidden />
 
 <!-- Alarme plein écran -->
 <div class="alarm-screen" id="alarmScreen">
@@ -772,7 +797,9 @@
         createdAt: t.createdAt || new Date().toISOString(),
         recur: /^(daily|weekdays|weekly)$/.test(t.recur) ? t.recur : "",
         recurParent: t.recurParent || undefined,
-        remind: Array.isArray(t.remind) ? t.remind : (t.time ? [0] : []),
+        remind: Array.isArray(t.remind)
+          ? t.remind.map(Number).filter(function (n) { return n >= 0 && n <= 20160; })
+          : (t.time ? [0] : []),
         alarm: !!t.alarm,
         subtasks: Array.isArray(t.subtasks) ? t.subtasks.filter(function (s) { return s && typeof s === "object"; }).map(function (s) {
           return { id: s.id || uid(), title: typeof s.title === "string" ? s.title : "", done: !!s.done };
@@ -827,11 +854,20 @@
     try {
       localStorage.setItem(KEY, JSON.stringify(S));
     } catch (e) {
+      pruneHistory(S);
+      try { localStorage.setItem(KEY, JSON.stringify(S)); return; } catch (e2) {}
+      // libère de la place : vieux points de restauration d'abord
+      try {
+        var sn = JSON.parse(localStorage.getItem("cap.snap") || "[]");
+        while (sn.length > 2) {
+          sn.shift();
+          localStorage.setItem("cap.snap", JSON.stringify(sn));
+          try { localStorage.setItem(KEY, JSON.stringify(S)); return; } catch (e3) {}
+        }
+      } catch (e4) {}
       if (!storageWarned) {
         storageWarned = true;
-        pruneHistory(S);
-        try { localStorage.setItem(KEY, JSON.stringify(S)); return; } catch (e2) {}
-        toast("⚠️ Stockage plein — exporte tes données (Réglages ▸ Sauvegarde)");
+        toast("⚠️ Stockage plein — retire la sonnerie perso ou exporte tes données");
       }
     }
   }
@@ -1083,7 +1119,7 @@
   /* Mémorise quelles cartes de tâches sont dépliées, pour ne pas les
      refermer à chaque re-rendu. */
   var openTasks = Object.create(null);
-  var currentView = "today";
+  var currentView = "week";
   var dismissed = { notif: false, install: false, backup: false };
 
   /* Ne rend que la vue affichée (+ l'en-tête). Les autres vues sont
@@ -1210,13 +1246,15 @@
         if (diff < -15) lateCls = "late";        // > 15 min de retard : rouge
         else if (diff < 60) lateCls = "soon";    // imminent ou petit retard : orange
       }
-      tags += '<span class="tag ' + lateCls + '">🕑 ' + t.time + "</span>";
+      tags += '<span class="tag tag-time ' + lateCls + '">🕑 ' + t.time + "</span>";
     }
+    var rOff = (t.remind && t.remind.length) ? Math.max.apply(null, t.remind) : 0;
+    if (t.time && rOff > 0) tags += '<span class="tag">🔔 ' + remindLabel(rOff) + "</span>";
     if (t.recur) {
       var rl = { daily: "chaque jour", weekly: "chaque semaine", weekdays: "jours ouvrés" }[t.recur] || "répétée";
       tags += '<span class="tag">🔁 ' + rl + "</span>";
     }
-    if (t.alarm) tags += '<span class="tag">🔔 alarme</span>';
+    if (t.alarm) tags += '<span class="tag">⏰ sonnerie</span>';
     if (t.subtasks.length) {
       var sd = t.subtasks.filter(function (s) { return s.done; }).length;
       tags += '<span class="tag">☑️ ' + sd + "/" + t.subtasks.length + "</span>";
@@ -1257,6 +1295,21 @@
             '<input type="time" value="' + (t.time || "") + '" data-act="time" aria-label="Heure" />' +
             '<input type="date" value="' + t.date + '" data-act="movedate" aria-label="Date" />' +
           "</div>" +
+          (t.time ?
+          '<div class="dc-row">' +
+            '<span class="dc-label">Rappel</span>' +
+            '<select data-act="remind">' +
+              opt("0", "À l'heure", "" + rOff) +
+              opt("5", "5 min avant", "" + rOff) +
+              opt("10", "10 min avant", "" + rOff) +
+              opt("15", "15 min avant", "" + rOff) +
+              opt("30", "30 min avant", "" + rOff) +
+              opt("60", "1 h avant", "" + rOff) +
+              opt("120", "2 h avant", "" + rOff) +
+              opt("1440", "La veille", "" + rOff) +
+            "</select>" +
+            '<button class="act toggle" data-act="alarm" aria-pressed="' + (t.alarm ? "true" : "false") + '">⏰ Sonnerie</button>' +
+          "</div>" : "") +
           '<div class="dc-row">' +
             '<span class="dc-label">Répéter</span>' +
             '<select data-act="recur">' +
@@ -1265,7 +1318,8 @@
               opt("weekdays", "Jours ouvrés", t.recur) +
               opt("weekly", "Chaque semaine", t.recur) +
             "</select>" +
-            '<button class="act toggle" data-act="alarm" aria-pressed="' + (t.alarm ? "true" : "false") + '">🔔 Alarme</button>' +
+            (t.time ? "" :
+              '<button class="act toggle" data-act="alarm" aria-pressed="' + (t.alarm ? "true" : "false") + '">⏰ Sonnerie</button>') +
           "</div>" +
           '<div class="dc-row actions">' +
             '<button class="act" data-act="dupe">⧉ Dupliquer</button>' +
@@ -1279,6 +1333,12 @@
   function opt(v, label, cur) {
     return '<option value="' + v + '"' + (v === (cur || "") ? " selected" : "") + ">" + label + "</option>";
   }
+  function remindLabel(min) {
+    if (min <= 0) return "à l'heure";
+    if (min >= 1440) return "la veille";
+    if (min >= 60) return (min / 60) + " h avant";
+    return min + " min avant";
+  }
 
   function bindTaskCards(scope) {
     scope.querySelectorAll(".task").forEach(function (el) {
@@ -1286,7 +1346,7 @@
       el.addEventListener("click", function (e) {
         var node = e.target.closest("[data-act]");
         var act = node ? node.getAttribute("data-act") : null;
-        if (!act || act === "note" || act === "subedit" || act === "titleedit" || act === "time" || act === "recur" || act === "movedate") return;
+        if (!act || act === "note" || act === "subedit" || act === "titleedit" || act === "time" || act === "recur" || act === "movedate" || act === "remind") return;
         var t = findTask(id);
         if (!t) return;
         if (act === "toggle") { toggleTask(id); }
@@ -1348,6 +1408,14 @@
       el.querySelectorAll("[data-act='recur']").forEach(function (sel) {
         sel.addEventListener("change", function () { var t = findTask(id); t.recur = sel.value; save(); render(); });
       });
+      el.querySelectorAll("[data-act='remind']").forEach(function (sel) {
+        sel.addEventListener("change", function () {
+          var t = findTask(id);
+          t.remind = [Math.max(0, +sel.value || 0)];
+          t.fired = [];
+          save(); render();
+        });
+      });
       el.querySelectorAll("[data-act='movedate']").forEach(function (inp) {
         inp.addEventListener("change", function () {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(inp.value)) return;
@@ -1357,7 +1425,48 @@
     });
   }
 
+  /* Prochain rappel à venir (parmi les tâches non faites avec une heure). */
+  function nextReminder() {
+    var now = Date.now(), best = null;
+    S.tasks.forEach(function (t) {
+      if (t.done || !t.time) return;
+      var due = parseYmd(t.date);
+      due.setHours(+t.time.slice(0, 2), +t.time.slice(3), 0, 0);
+      var offs = (t.remind && t.remind.length) ? t.remind : [0];
+      var off = Math.max.apply(null, offs);
+      var at = due.getTime() - off * 60000;
+      if (at >= now && (!best || at < best.at)) best = { at: at, t: t, dueTime: t.time, date: t.date };
+    });
+    return best;
+  }
+
+  function renderHomeSummary() {
+    var box = $("#homeSummary");
+    if (!box) return;
+    var td = today(), end = addDays(td, 6);
+    var week = S.tasks.filter(function (t) { return t.date >= td && t.date <= end; });
+    var timed = week.filter(function (t) { return t.time && !t.done; }).length;
+    var late = S.tasks.filter(function (t) {
+      if (t.done || !t.time || t.date > td) return false;
+      var due = parseYmd(t.date); due.setHours(+t.time.slice(0, 2), +t.time.slice(3), 0, 0);
+      return due.getTime() < Date.now();
+    }).length;
+    var nr = nextReminder();
+    var nrTxt = nr
+      ? cap(relLabel(nr.date)) + " à " + nr.dueTime + " — " + esc(nr.t.title)
+      : "aucun rappel programmé";
+    box.innerHTML =
+      '<div class="hs-title">Ta semaine</div>' +
+      '<div class="hs-stats">' +
+        '<div><b>' + week.length + "</b><small>tâche" + (week.length > 1 ? "s" : "") + "</small></div>" +
+        '<div><b>' + timed + "</b><small>à heure fixe</small></div>" +
+        '<div><b class="' + (late ? "hs-late" : "") + '">' + late + "</b><small>en retard</small></div>" +
+      "</div>" +
+      '<div class="hs-next">⏰ Prochain rappel : <b>' + nrTxt + "</b></div>";
+  }
+
   function renderWeek() {
+    renderHomeSummary();
     var box = $("#weekList");
     var html = "";
     var start = today();
@@ -1515,6 +1624,38 @@
   }
 
   /* ============================================================
+     SONNERIE PERSONNALISÉE
+  ============================================================ */
+  var SOUND_KEY = "cap.sound";        // sonnerie perso (data URL)
+  var SOUND_MAX = 1500000;            // ~1,5 Mo
+  var alarmAudio = null;
+
+  function customSound() { try { return localStorage.getItem(SOUND_KEY) || ""; } catch (e) { return ""; } }
+  function playAlarmSound() {
+    if (!S.settings.sound) return;
+    var src = customSound();
+    if (src) {
+      try {
+        if (!alarmAudio) { alarmAudio = new Audio(); alarmAudio.loop = true; }
+        alarmAudio.src = src;
+        alarmAudio.currentTime = 0;
+        var pr = alarmAudio.play();
+        if (pr && pr.catch) pr.catch(function () { beepPattern(); });
+        return;
+      } catch (e) {}
+    }
+    beepPattern();
+  }
+  function beepPattern() {
+    if (!S.settings.sound) return;
+    beep(880, 0.25, "square");
+    setTimeout(function () { beep(660, 0.25, "square"); }, 260);
+  }
+  function stopAlarmSound() {
+    if (alarmAudio) { try { alarmAudio.pause(); alarmAudio.currentTime = 0; } catch (e) {} }
+  }
+
+  /* ============================================================
      ALARME PLEIN ÉCRAN
   ============================================================ */
   var alarmTimer = null, alarmSnoozeFor = null;
@@ -1522,18 +1663,18 @@
     $("#alarmClock").textContent = timeStr || nowHM();
     $("#alarmMsg").textContent = label || "Réveil";
     $("#alarmScreen").classList.add("on");
-    var step = 0;
-    function ring() {
-      if (S.settings.sound) { beep(880, 0.25, "square"); setTimeout(function () { beep(660, 0.25, "square"); }, 260); }
+    playAlarmSound();
+    function pulse() {
+      if (S.settings.sound && !customSound()) beepPattern();
       if (S.settings.vibrate && navigator.vibrate) navigator.vibrate([300, 150, 300]);
-      step++;
     }
-    ring();
-    alarmTimer = setInterval(ring, 1400);
+    pulse();
+    alarmTimer = setInterval(pulse, 1600);
     if (document.hidden) notify(label || "Réveil", { body: "C'est l'heure", tag: "alarm", data: { alarm: true } });
   }
   function stopAlarm() {
     clearInterval(alarmTimer); alarmTimer = null;
+    stopAlarmSound();
     $("#alarmScreen").classList.remove("on");
   }
   $("#alarmStop").addEventListener("click", stopAlarm);
@@ -1634,22 +1775,24 @@
       launchAlarm("Rappel", nowHM());
     }
 
-    // Rappels de tâches
+    // Rappels de tâches (à l'heure ou en avance selon t.remind)
     S.tasks.forEach(function (t) {
       if (t.done || !t.time) return;
-      if (t.date > td) return;
+      if (t.date > addDays(td, 1)) return;
       var due = parseYmd(t.date);
       due.setHours(+t.time.slice(0, 2), +t.time.slice(3), 0, 0);
-      (t.remind && t.remind.length ? t.remind : [0]).forEach(function (off) {
+      var offs = (t.remind && t.remind.length) ? t.remind : [0];
+      offs.forEach(function (off) {
         var trigger = due.getTime() - off * 60000;
         var key = "" + off;
         if (now.getTime() >= trigger && t.fired.indexOf(key) < 0 && now.getTime() - trigger < 12 * 3600000) {
           t.fired.push(key); save();
-          if (off === 0 && t.alarm && now.getTime() - trigger < 5 * 60000) {
+          if (t.alarm && now.getTime() - trigger < 5 * 60000) {
             launchAlarm(t.title, t.time);
           } else {
+            var lead = off >= 1440 ? "demain" : (off >= 60 ? "dans " + (off / 60) + " h" : "dans " + off + " min");
             var msg = off === 0 ? "C'est l'heure : " + t.title
-              : t.title + " dans " + (off >= 60 ? (off / 60) + " h" : off + " min");
+              : t.title + " à " + t.time + " — " + lead;
             notify("Cap", {
               body: msg, tag: "task-" + t.id, data: { id: t.id },
               actions: [{ action: "done", title: "✓ Terminer" }, { action: "snooze", title: "⏰ +10 min" }]
@@ -1802,8 +1945,16 @@
     $("#setNotif").textContent = (window.Notification && Notification.permission === "granted") ? "Activées ✅" : "Activer";
     syncInstallUI();
     syncPersistUI();
+    syncSoundUI();
     renderSnaps();
     applyTheme();
+  }
+  function syncSoundUI() {
+    var has = !!customSound();
+    $("#soundSub").textContent = has ? "Musique personnalisée ✅" : "Bips par défaut";
+    $("#soundPick").textContent = has ? "Changer" : "Choisir un son";
+    $("#soundTest").hidden = !has;
+    $("#soundClear").hidden = !has;
   }
   function applyTheme() {
     var t = S.settings.theme;
@@ -1832,7 +1983,38 @@
       setSwitch($("#" + p[0]), S.settings[p[1]]);
       save();
       if (p[1] === "sound" && S.settings.sound) beep(880, 0.1);
+      if (p[1] === "sound" && !S.settings.sound) stopAlarmSound();
     });
+  });
+
+  /* ---- Sonnerie personnalisée ---- */
+  $("#soundPick").addEventListener("click", function () { $("#soundFile").click(); });
+  $("#soundFile").addEventListener("change", function (e) {
+    var f = e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    if (!/^audio\//.test(f.type || "")) { toast("Choisis un fichier audio (mp3, m4a…)"); return; }
+    if (f.size > SOUND_MAX) { toast("Trop lourd (max ~1,5 Mo) — prends un extrait court"); return; }
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        localStorage.setItem(SOUND_KEY, r.result);
+        syncSoundUI();
+        toast("Sonnerie enregistrée ✅");
+        playAlarmSound(); setTimeout(stopAlarmSound, 3000);
+      } catch (err) { toast("Pas assez de place — essaie un extrait plus court"); }
+    };
+    r.readAsDataURL(f);
+  });
+  $("#soundTest").addEventListener("click", function () {
+    actx();
+    playAlarmSound();
+    setTimeout(stopAlarmSound, 4000);
+  });
+  $("#soundClear").addEventListener("click", function () {
+    stopAlarmSound();
+    try { localStorage.removeItem(SOUND_KEY); } catch (e) {}
+    syncSoundUI();
+    toast("Sonnerie par défaut rétablie");
   });
   $("#setWork").addEventListener("change", function (e) {
     S.settings.work = Math.max(1, Math.min(90, +e.target.value || 25)); save();
@@ -2207,9 +2389,24 @@
   if (params.get("action") === "add") setTimeout(function () { $("#qTitle").focus(); }, 300);
   if (params.get("action") === "alarm") launchAlarm("Réveil", nowHM());
 
-  // Débloque l'audio au premier geste.
+  // Débloque l'audio (Web Audio + sonnerie perso) au premier geste,
+  // pour que l'alarme puisse sonner même déclenchée par un minuteur ensuite.
+  function primeAudio() {
+    actx();
+    var src = customSound();
+    if (src) {
+      try {
+        if (!alarmAudio) { alarmAudio = new Audio(); alarmAudio.loop = true; }
+        alarmAudio.src = src; alarmAudio.muted = true;
+        var p = alarmAudio.play();
+        if (p && p.then) p.then(function () {
+          alarmAudio.pause(); alarmAudio.currentTime = 0; alarmAudio.muted = false;
+        }).catch(function () { alarmAudio.muted = false; });
+      } catch (e) {}
+    }
+  }
   ["pointerdown", "keydown"].forEach(function (ev) {
-    addEventListener(ev, function once() { actx(); removeEventListener(ev, once); }, { once: true });
+    addEventListener(ev, function once() { primeAudio(); removeEventListener(ev, once); }, { once: true });
   });
 })();
 </script>
