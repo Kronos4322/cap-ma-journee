@@ -17,22 +17,23 @@ Elle fonctionne **hors-ligne** et **sans compte** : toutes les données restent 
   Les tâches sont triées automatiquement (rouge en haut) et bordées de leur couleur.
 
 ### Les fonctionnalités en plus (repérées sur les meilleures apps 2026)
-- **Rappels à l'heure** : notification quand une tâche a une heure (option « advance » possible dans le code).
-- **Réveil / alarmes** : plusieurs alarmes récurrentes (jours de la semaine), écran plein écran qui sonne + vibre, bouton « Rappel dans 5 min ».
+- **Rappels à l'heure** : notification quand une tâche a une heure. Étiquette orange si l'échéance approche, rouge au-delà de 15 min de retard.
+- **Réveil / alarmes** : plusieurs alarmes récurrentes (jours de la semaine), écran plein écran qui sonne + vibre, bouton « Rappel dans 5 min ». Plein écran seulement si l'alarme est à l'heure (±5 min) ; sinon simple notification « alarme manquée ».
 - **Alarme sur une tâche** : une tâche importante peut déclencher le réveil plein écran à son heure.
-- **Tâches répétées** : chaque jour / jours ouvrés / chaque semaine (la suivante se recrée à la validation).
+- **Tâches répétées** : chaque jour / jours ouvrés / chaque semaine (la suivante se recrée à la validation, jamais dans le passé).
 - **Report automatique** : le matin, les tâches non faites de la veille passent à aujourd'hui.
-- **Minuteur Focus (Pomodoro)** : 25/5 réglable, longue pause toutes les 4 sessions, garde l'écran allumé, compte les pomodoros par tâche.
-- **Sous-tâches**, **notes**, **dupliquer**, **repousser à demain** ou **à une date précise**.
+- **Minuteur Focus (Pomodoro)** : 25/5 réglable, longue pause toutes les 4 sessions, garde l'écran allumé, compte les pomodoros par tâche. Reste juste même écran verrouillé (basé sur l'horloge réelle).
+- **Titre modifiable**, **sous-tâches**, **notes**, **dupliquer**, **repousser à demain** ou **à une date précise**.
+- **Ajout par jour** directement depuis la vue Semaine.
 - **Annuler** une suppression de tâche (bouton dans la notification en bas).
 - **Export calendrier (.ics)** par tâche : pour un rappel système fiable même app fermée (utile sur iPhone).
 - **Actions dans les notifications de rappel** : « ✓ Terminer » / « ⏰ +10 min » sans ouvrir l'app.
 - **Séries (streak)** 🔥 : jours consécutifs terminés à 100 %, avec record.
-- **Stats** : graphe des 14 derniers jours, répartition par priorité, totaux (tâches faites, pomodoros).
+- **Stats** : graphe des 14 derniers jours (valeur affichée, vert à 100 %), répartition par priorité, totaux (tâches faites, pomodoros).
 - **Confettis + son** quand la journée atteint 100 %.
 - **Thème clair / sombre / automatique**, **vibrations**, **sons** réglables.
 - **Sauvegarde** : export / import d'un fichier `.json`, et « tout effacer ».
-- Vue **Semaine** : les 14 prochains jours.
+- Vue **Semaine** : les 7 prochains jours + les tâches planifiées au-delà.
 
 ---
 
