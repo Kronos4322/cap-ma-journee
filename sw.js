@@ -1,5 +1,5 @@
 /* Service worker de Cap : app-shell hors-ligne + gestion des notifications. */
-const CACHE = 'cap-v7';
+const CACHE = 'cap-v8';
 const ASSETS = [
   './',
   './index.html',

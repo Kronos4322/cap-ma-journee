@@ -19,7 +19,7 @@ Elle fonctionne **hors-ligne** et **sans compte** : toutes les données restent 
 
 ### Les fonctionnalités en plus (repérées sur les meilleures apps 2026)
 - **Rappels à l'heure** : notification quand une tâche a une heure. **Choix du moment** dans les détails (à l'heure, 5/10/15/30 min avant, 1 ou 2 h avant, la veille). Étiquette orange si l'échéance approche, rouge au-delà de 15 min de retard.
-- **Sonnerie personnalisée** : Réglages → *Sonnerie d'alarme → Choisir un son* → un extrait audio de ton téléphone (mp3, m4a… ≤ ~1,5 Mo). Boutons *Écouter* / *Retirer*. Utilisée par l'alarme plein écran ; sinon bips par défaut.
+- **Sonnerie personnalisée** : Réglages → *Sonnerie d'alarme → Choisir un son* → prends n'importe quel fichier audio du téléphone (même une chanson entière), puis **découpe un extrait** : réglages *Longueur* (3–20 s) et *Début*, *Écouter l'extrait*, *Enregistrer*. L'app convertit l'extrait en un petit fichier (~0,2–1,1 Mo) gardé en interne. Boutons *Écouter* / *Retirer*. Joué en boucle par l'alarme plein écran ; sinon bips par défaut.
 - **Réveil / alarmes** : plusieurs alarmes récurrentes (jours de la semaine), écran plein écran qui sonne + vibre, bouton « Rappel dans 5 min ». Plein écran seulement si l'alarme est à l'heure (±5 min) ; sinon simple notification « alarme manquée ».
 - **Alarme (sonnerie) sur une tâche** : bouton « ⏰ Sonnerie » dans les détails — déclenche le plein écran au moment du rappel choisi.
 - **Tâches répétées** : chaque jour / jours ouvrés / chaque semaine (la suivante se recrée à la validation, jamais dans le passé).

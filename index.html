@@ -414,6 +414,19 @@
     display: inline-block; margin-top: 10px; background: var(--accent-soft);
     border: 1px solid var(--border); border-radius: 10px; padding: 9px 14px; font-size: .88rem;
   }
+
+  .trim-panel {
+    margin-top: 12px; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px;
+  }
+  .trim-name { font-size: .82rem; font-weight: 600; margin-bottom: 10px; word-break: break-word; }
+  .trim-ctl {
+    display: block; font-size: .78rem; color: var(--text-dim); margin-bottom: 10px;
+  }
+  .trim-ctl span { float: right; color: var(--text); font-weight: 700; }
+  .trim-ctl input[type="range"] { width: 100%; margin-top: 6px; accent-color: var(--accent); }
+  .trim-est { font-size: .76rem; color: var(--text-dim); margin: 4px 0 10px; }
+  .trim-est.over { color: var(--red); font-weight: 600; }
   .snap-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
   .snap-empty { font-size: .8rem; color: var(--text-dim); padding: 4px 0; }
   .snap {
@@ -672,12 +685,27 @@
       <div class="lbl">Sons <small>Bips, minuteur, alarme</small></div>
       <button class="switch" id="setSound" role="switch" aria-label="Sons" aria-checked="true" aria-pressed="true"></button>
     </div>
-    <div class="set-row">
+    <div class="set-block">
       <div class="lbl">Sonnerie d'alarme <small id="soundSub">Bips par défaut</small></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
-        <button class="link-btn" id="soundTest" hidden>Écouter</button>
+      <div class="backup-actions">
+        <button class="link-btn" id="soundTest" hidden>▶ Écouter</button>
         <button class="link-btn" id="soundPick">Choisir un son</button>
         <button class="link-btn danger" id="soundClear" hidden>Retirer</button>
+      </div>
+      <div class="trim-panel" id="soundTrim" hidden>
+        <div class="trim-name" id="trimName"></div>
+        <label class="trim-ctl">Longueur <span id="trimLenVal">12 s</span>
+          <input type="range" id="trimLen" min="3" max="20" step="1" value="12" />
+        </label>
+        <label class="trim-ctl">Début <span id="trimStartVal">0:00</span>
+          <input type="range" id="trimStart" min="0" max="0" step="0.5" value="0" />
+        </label>
+        <div class="trim-est" id="trimEst"></div>
+        <div class="backup-actions">
+          <button class="link-btn" id="trimPlay">▶ Écouter l'extrait</button>
+          <button class="link-btn" id="trimSave">Enregistrer</button>
+          <button class="link-btn" id="trimCancel">Annuler</button>
+        </div>
       </div>
     </div>
     <div class="set-row">
@@ -1966,7 +1994,7 @@
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 
   function openSettings() { renderSnaps(); $("#settingsSheet").classList.add("open"); }
-  function closeSettings() { $("#settingsSheet").classList.remove("open"); }
+  function closeSettings() { closeTrim(); $("#settingsSheet").classList.remove("open"); }
   $("#openSettings").addEventListener("click", openSettings);
   $("#closeSettings").addEventListener("click", closeSettings);
   $("#settingsSheet").addEventListener("click", function (e) { if (e.target === $("#settingsSheet")) closeSettings(); });
@@ -1987,24 +2015,154 @@
     });
   });
 
-  /* ---- Sonnerie personnalisée ---- */
+  /* ---- Sonnerie personnalisée : on découpe un extrait au bon poids ---- */
+  var TRIM_RATE = 22050;          // mono, 16 bits -> 44100 octets/s
+  var TRIM_BUDGET = 1100000;      // ~1,1 Mo binaire (~1,45 Mo une fois en data URL)
+  var trimBuf = null, trimName = "", trimPreview = null;
+
+  function fmtSec(s) { return Math.floor(s / 60) + ":" + pad(Math.round(s % 60)); }
+  function clipBytes(lenSec) { return Math.round(lenSec * TRIM_RATE * 2) + 44; }
+
+  function updateTrimUI() {
+    if (!trimBuf) return;
+    var lenEl = $("#trimLen");
+    lenEl.max = Math.max(3, Math.min(20, Math.floor(trimBuf.duration)));
+    if (+lenEl.value > +lenEl.max) lenEl.value = lenEl.max;
+    var len = +lenEl.value;
+    var startEl = $("#trimStart");
+    startEl.max = Math.max(0, (trimBuf.duration - len)).toFixed(1);
+    if (+startEl.value > +startEl.max) startEl.value = startEl.max;
+    $("#trimLenVal").textContent = len + " s";
+    $("#trimStartVal").textContent = fmtSec(+startEl.value);
+    var kb = Math.round(clipBytes(len) / 1024);
+    var over = clipBytes(len) > TRIM_BUDGET;
+    var est = $("#trimEst");
+    est.textContent = "Extrait : ~" + kb + " Ko" + (over ? " — trop lourd, raccourcis" : "");
+    est.classList.toggle("over", over);
+    $("#trimSave").disabled = over;
+  }
+
+  function extractClip() {
+    var len = +$("#trimLen").value, start = +$("#trimStart").value;
+    var frames = Math.floor(len * TRIM_RATE);
+    var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    var oac = new OAC(1, frames, TRIM_RATE);
+    var src = oac.createBufferSource();
+    src.buffer = trimBuf;
+    src.connect(oac.destination);
+    src.start(0, start, len);
+    return oac.startRendering();   // -> Promise<AudioBuffer mono>
+  }
+
+  function bufToWavDataUrl(buf) {
+    var n = buf.length, data = buf.getChannelData(0);
+    var out = new DataView(new ArrayBuffer(44 + n * 2));
+    var w = function (o, s) { for (var i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, "RIFF"); out.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt ");
+    out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+    out.setUint32(24, buf.sampleRate, true); out.setUint32(28, buf.sampleRate * 2, true);
+    out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+    w(36, "data"); out.setUint32(40, n * 2, true);
+    for (var i = 0; i < n; i++) {
+      var v = Math.max(-1, Math.min(1, data[i]));
+      out.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true);
+    }
+    var bytes = new Uint8Array(out.buffer), bin = "";
+    for (var j = 0; j < bytes.length; j += 0x8000) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(j, j + 0x8000));
+    }
+    return "data:audio/wav;base64," + btoa(bin);
+  }
+
+  function closeTrim() {
+    $("#soundTrim").hidden = true;
+    trimBuf = null;
+    if (trimPreview) { try { trimPreview.stop(); } catch (e) {} trimPreview = null; }
+  }
+
+  function fileToArrayBuffer(f) {
+    if (f.arrayBuffer) return f.arrayBuffer();
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(r.result); };
+      r.onerror = rej;
+      r.readAsArrayBuffer(f);
+    });
+  }
+
   $("#soundPick").addEventListener("click", function () { $("#soundFile").click(); });
   $("#soundFile").addEventListener("change", function (e) {
     var f = e.target.files[0]; e.target.value = "";
     if (!f) return;
-    if (!/^audio\//.test(f.type || "")) { toast("Choisis un fichier audio (mp3, m4a…)"); return; }
-    if (f.size > SOUND_MAX) { toast("Trop lourd (max ~1,5 Mo) — prends un extrait court"); return; }
-    var r = new FileReader();
-    r.onload = function () {
-      try {
-        localStorage.setItem(SOUND_KEY, r.result);
-        syncSoundUI();
-        toast("Sonnerie enregistrée ✅");
-        playAlarmSound(); setTimeout(stopAlarmSound, 3000);
-      } catch (err) { toast("Pas assez de place — essaie un extrait plus court"); }
-    };
-    r.readAsDataURL(f);
+    if (f.size > 40 * 1024 * 1024) { toast("Fichier trop volumineux"); return; }
+    toast("Lecture du fichier…");
+    fileToArrayBuffer(f).then(function (ab) {
+      var a = actx();
+      if (!a) throw new Error("noaudio");
+      return new Promise(function (res, rej) {
+        var p = a.decodeAudioData(ab, res, rej);
+        if (p && p.then) p.then(res, rej);
+      });
+    }).then(function (buf) {
+      if (!buf) return;
+      trimBuf = buf; trimName = f.name;
+      var maxLen = Math.max(3, Math.min(20, Math.floor(buf.duration)));
+      var lenEl = $("#trimLen"), stEl = $("#trimStart");
+      lenEl.max = maxLen;                         // le max AVANT la valeur
+      lenEl.value = Math.min(12, maxLen);
+      stEl.max = Math.max(0, buf.duration - lenEl.value).toFixed(1);
+      stEl.value = 0;
+      $("#trimName").textContent = f.name + " — " + fmtSec(buf.duration) + " au total";
+      $("#soundTrim").hidden = false;
+      updateTrimUI();
+      $("#soundTrim").scrollIntoView({ block: "center" });
+    }).catch(function () {
+      toast("Format audio non lu — essaie un mp3 ou un m4a");
+    });
   });
+
+  ["trimLen", "trimStart"].forEach(function (id) {
+    $("#" + id).addEventListener("input", function () {
+      if (trimPreview) { try { trimPreview.stop(); } catch (e) {} trimPreview = null; }
+      updateTrimUI();
+    });
+  });
+
+  $("#trimPlay").addEventListener("click", function () {
+    if (!trimBuf) return;
+    var a = actx(); if (!a) return;
+    if (trimPreview) { try { trimPreview.stop(); } catch (e) {} }
+    var s = a.createBufferSource();
+    s.buffer = trimBuf;
+    s.connect(a.destination);
+    s.start(0, +$("#trimStart").value, +$("#trimLen").value);
+    trimPreview = s;
+  });
+
+  $("#trimCancel").addEventListener("click", closeTrim);
+
+  $("#trimSave").addEventListener("click", function () {
+    if (!trimBuf) return;
+    $("#trimSave").disabled = true; $("#trimSave").textContent = "…";
+    extractClip().then(function (clip) {
+      var url = bufToWavDataUrl(clip);
+      try {
+        localStorage.setItem(SOUND_KEY, url);
+        syncSoundUI();
+        closeTrim();
+        toast("Sonnerie enregistrée ✅");
+        primeAudio();
+        playAlarmSound(); setTimeout(stopAlarmSound, 3500);
+      } catch (err) {
+        toast("Pas assez de place — raccourcis l'extrait");
+      }
+      $("#trimSave").disabled = false; $("#trimSave").textContent = "Enregistrer";
+    }).catch(function () {
+      toast("Échec du découpage");
+      $("#trimSave").disabled = false; $("#trimSave").textContent = "Enregistrer";
+    });
+  });
+
   $("#soundTest").addEventListener("click", function () {
     actx();
     playAlarmSound();
