@@ -32,7 +32,8 @@ Elle fonctionne **hors-ligne** et **sans compte** : toutes les données restent 
 - **Stats** : graphe des 14 derniers jours (valeur affichée, vert à 100 %), répartition par priorité, totaux (tâches faites, pomodoros).
 - **Confettis + son** quand la journée atteint 100 %.
 - **Thème clair / sombre / automatique**, **vibrations**, **sons** réglables.
-- **Sauvegarde** : télécharger / copier le texte / restaurer (fichier ou collé), rappel si >14 jours, stockage persistant, et « tout effacer ».
+- **Points de restauration** internes : instantanés de l'app (auto quotidien + avant effacement/restauration), restaurables en un tap, aucun fichier.
+- **Protection anti-effacement** (stockage persistant) et **export/import fichier** pour changer de téléphone.
 - **Installation** : bouton dédié dans les réglages (Android) ou instructions (iPhone), + bannière d'accueil.
 - Vue **Semaine** : les 7 prochains jours + les tâches planifiées au-delà.
 
@@ -109,11 +110,17 @@ Depuis l'app : **Réglages → Installer sur le téléphone**.
 - **Android / Chrome** : bouton « Installer » (ou la bannière en haut de la vue Aujourd'hui).
 - **iPhone / Safari** : bouton *Partager* ⬆︎ → *Sur l'écran d'accueil* (rappel affiché dans les réglages).
 
-## Sauvegarde des données
-Les données vivent dans le `localStorage` du navigateur où l'app est ouverte. **Elles survivent aux mises à jour de l'app** (même origine), mais pas au vidage du cache ni à un changement de téléphone.
+## Ne pas perdre ses données
 
-Dans **Réglages → Sauvegarde des données** :
-- **Télécharger** un fichier `.json`, ou **Copier le texte** (pratique sur mobile : colle-le dans un mail ou tes notes).
-- **Restaurer** depuis un fichier ou en collant le texte.
-- **Protéger de l'effacement** : demande au navigateur un stockage persistant (souvent accordé si l'app est installée).
-- Le sous-titre indique la date de la dernière sauvegarde ; un bandeau le rappelle si ça fait plus de 14 jours.
+Tout est stocké **dans l'application, sur l'appareil** (`localStorage`). Ça survit aux mises à jour de l'app, mais pas au vidage du cache navigateur ni à un changement de téléphone.
+
+**Points de restauration** (Réglages) — sauvegarde interne, aucun fichier ne sort :
+- **＋ Enregistrer maintenant** crée un instantané de l'état complet.
+- Un point est créé **automatiquement chaque jour**, et **avant chaque restauration ou effacement**.
+- La liste montre date, nombre de tâches et type (auto / manuel / avant effacement…). **Restaurer** remplace l'état actuel (un point de sécurité est pris juste avant).
+- « Tout effacer » garde les points → on peut annuler un effacement.
+- Jusqu'à 12 points conservés (les auto sont supprimés en premier).
+
+**Protéger de l'effacement** (Réglages) : `navigator.storage.persist()` — demande au navigateur de ne pas vider les données (souvent accordé quand l'app est installée).
+
+**Changer de téléphone** (Réglages) : *Exporter un fichier* `.json` puis *Importer un fichier* sur l'autre appareil. C'est la seule opération qui produit un fichier.

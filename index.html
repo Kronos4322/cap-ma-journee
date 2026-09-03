@@ -385,12 +385,7 @@
   .set-block { padding: 12px 0; border-bottom: 1px solid var(--border); }
   .set-block .lbl { font-weight: 600; margin-bottom: 8px; }
   .set-block .lbl small { display: block; color: var(--text-dim); font-weight: 400; font-size: .78rem; }
-  .backup-grp { margin-top: 10px; }
-  .backup-grp-lbl {
-    display: block; font-size: .72rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .05em; color: var(--text-dim); margin-bottom: 5px;
-  }
-  .backup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .backup-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
   .backup-actions .link-btn {
     background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 8px 12px; font-size: .85rem;
@@ -398,12 +393,22 @@
   .set-note {
     margin-top: 10px; font-size: .76rem; color: var(--text-dim); line-height: 1.45;
   }
-  .paste-wrap { margin-top: 10px; }
-  .paste-wrap textarea {
-    width: 100%; min-height: 90px; border: 1px solid var(--border); border-radius: 10px;
-    background: var(--surface-2); padding: 8px 10px; font-size: .82rem; outline: none; resize: vertical;
-    margin-bottom: 8px;
+
+  .snap-save {
+    display: inline-block; margin-top: 10px; background: var(--accent-soft);
+    border: 1px solid var(--border); border-radius: 10px; padding: 9px 14px; font-size: .88rem;
   }
+  .snap-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .snap-empty { font-size: .8rem; color: var(--text-dim); padding: 4px 0; }
+  .snap {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 9px 10px;
+  }
+  .snap-info { flex: 1; min-width: 0; }
+  .snap-info b { display: block; font-size: .88rem; }
+  .snap-info small { color: var(--text-dim); font-size: .74rem; }
+  .snap .link-btn { flex: none; font-size: .84rem; }
+  .snap-del { flex: none; color: var(--text-dim); font-size: 1rem; padding: 2px 4px; }
 
   /* ===================== Alarme plein écran ===================== */
   .alarm-screen {
@@ -667,40 +672,29 @@
       </div>
     </div>
     <div class="set-block">
-      <div class="lbl">Sauvegarde des données
-        <small id="backupSub">Aucune sauvegarde effectuée</small>
+      <div class="lbl">Points de restauration
+        <small>Enregistre l'état de l'app pour pouvoir y revenir en cas de fausse manip</small>
       </div>
-      <div class="backup-grp"><span class="backup-grp-lbl">Sauvegarder</span>
-        <div class="backup-actions">
-          <button class="link-btn" id="setExport">⬇︎ Télécharger</button>
-          <button class="link-btn" id="setCopy">⧉ Copier le texte</button>
-        </div>
-      </div>
-      <div class="backup-grp"><span class="backup-grp-lbl">Restaurer</span>
-        <div class="backup-actions">
-          <button class="link-btn" id="setImport">📁 Depuis un fichier</button>
-          <button class="link-btn" id="setPaste">📋 Coller un texte</button>
-        </div>
-      </div>
-      <div class="paste-wrap" id="pasteWrap" hidden>
-        <textarea id="pasteBox" placeholder="Colle ici le contenu d'une sauvegarde (texte copié)…"></textarea>
-        <div class="backup-actions">
-          <button class="link-btn" id="pasteConfirm">Restaurer</button>
-          <button class="link-btn" id="pasteCancel">Annuler</button>
-        </div>
-      </div>
+      <button class="link-btn snap-save" id="snapSave">＋ Enregistrer maintenant</button>
+      <div id="snapList" class="snap-list"></div>
       <div class="set-note">
-        Tes tâches vivent uniquement dans ce navigateur. Exporte ou copie ta sauvegarde
-        de temps en temps — surtout avant de changer de téléphone ou de vider le cache.
-        Elle n'est pas affectée par les mises à jour de l'app.
+        Un point est créé automatiquement chaque jour, et avant chaque restauration ou effacement.
+        Tout reste dans l'application, sur cet appareil — rien ne sort.
       </div>
     </div>
     <div class="set-row">
       <div class="lbl">Protéger de l'effacement <small id="persistSub">Demande au navigateur de ne pas vider les données</small></div>
       <button class="link-btn" id="setPersist">Activer</button>
     </div>
+    <div class="set-block">
+      <div class="lbl">Changer de téléphone <small>Un fichier pour transférer vers un autre appareil</small></div>
+      <div class="backup-actions">
+        <button class="link-btn" id="setExport">Exporter un fichier</button>
+        <button class="link-btn" id="setImport">Importer un fichier</button>
+      </div>
+    </div>
     <div class="set-row">
-      <div class="lbl">Tout effacer <small>Supprime toutes les données de l'app</small></div>
+      <div class="lbl">Tout effacer <small>Vide les tâches, stats et réglages (les points de restauration sont gardés)</small></div>
       <button class="link-btn danger" id="setWipe">Effacer</button>
     </div>
     <div class="set-row" style="border:none">
@@ -742,7 +736,6 @@
     alarms: [],           // {id, time:"HH:MM", label, days:[0-6], enabled, lastFired}
     streak: { current: 0, best: 0, lastWin: null },
     totals: { pomodoros: 0 },
-    lastBackup: 0,        // horodatage du dernier export / copie
     settings: {
       theme: "auto", sound: true, vibrate: true, carryOver: true,
       notif: false, work: 25, brk: 5
@@ -801,7 +794,6 @@
         lastFired: a.lastFired || null
       };
     }) : [];
-    st.lastBackup = +st.lastBackup || 0;
     if (!st.streak || typeof st.streak !== "object") st.streak = clone(DEFAULT.streak);
     st.streak.current = +st.streak.current || 0;
     st.streak.best = +st.streak.best || 0;
@@ -1177,9 +1169,8 @@
     return '<div class="section-label">' + txt + ' <span class="count">' + n + "</span></div>";
   }
 
-  /* Bandeaux d'aide en haut de la vue Aujourd'hui (notifs, installation, sauvegarde).
+  /* Bandeaux d'aide en haut de la vue Aujourd'hui (notifs, installation).
      Chacun est masquable pour la session. */
-  var BACKUP_MAX_AGE = 14 * 86400000;
   function renderBanners(list) {
     var host = $("#todayHint");
     var items = [];
@@ -1190,30 +1181,15 @@
     if (!isStandalone() && !dismissed.install && (deferredInstall || isIOS())) {
       items.push({ k: "install", html: "📲 <b>Installe Cap sur ton téléphone</b> (Réglages ▸ Installer)." });
     }
-    if (!dismissed.backup && S.tasks.length &&
-        (!S.lastBackup || Date.now() - S.lastBackup > BACKUP_MAX_AGE)) {
-      items.push({
-        k: "backup",
-        html: "💾 <b>Sauvegarde tes données</b> pour ne rien perdre.",
-        act: "Sauvegarder"
-      });
-    }
 
     host.innerHTML = items.map(function (it) {
       return '<div class="hint">' +
         '<span class="hint-txt">' + it.html + "</span>" +
-        (it.act ? '<button class="hint-act" data-ban-act="' + it.k + '">' + it.act + "</button>" : "") +
         '<button class="hint-x" data-ban-x="' + it.k + '" aria-label="Masquer">✕</button></div>';
     }).join("");
 
     host.querySelectorAll("[data-ban-x]").forEach(function (b) {
       b.onclick = function () { dismissed[b.getAttribute("data-ban-x")] = true; renderBanners(tasksOf(today())); };
-    });
-    host.querySelectorAll("[data-ban-act]").forEach(function (b) {
-      b.onclick = function () {
-        var k = b.getAttribute("data-ban-act");
-        if (k === "backup") exportBackup();
-      };
     });
   }
 
@@ -1825,8 +1801,8 @@
     $("#setBreak").value = S.settings.brk;
     $("#setNotif").textContent = (window.Notification && Notification.permission === "granted") ? "Activées ✅" : "Activer";
     syncInstallUI();
-    syncBackupUI();
     syncPersistUI();
+    renderSnaps();
     applyTheme();
   }
   function applyTheme() {
@@ -1838,7 +1814,7 @@
   }
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 
-  function openSettings() { $("#settingsSheet").classList.add("open"); }
+  function openSettings() { renderSnaps(); $("#settingsSheet").classList.add("open"); }
   function closeSettings() { $("#settingsSheet").classList.remove("open"); }
   $("#openSettings").addEventListener("click", openSettings);
   $("#closeSettings").addEventListener("click", closeSettings);
@@ -1867,68 +1843,121 @@
   });
   $("#setNotif").addEventListener("click", requestNotif);
 
-  /* ---- Sauvegarde ---- */
-  function markBackup() {
-    S.lastBackup = Date.now(); save(); syncBackupUI();
-    if (currentView === "today") renderBanners(tasksOf(today()));
-  }
-  function backupText() { return JSON.stringify(S); }
+  /* ============================================================
+     POINTS DE RESTAURATION (interne, aucun fichier ne sort)
+  ============================================================ */
+  var SNAP_KEY = "cap.snap";
+  var SNAP_MAX = 12;
 
-  function exportBackup() {
-    var blob = new Blob([JSON.stringify(S, null, 2)], { type: "application/json" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url; a.download = "cap-sauvegarde-" + today() + ".json";
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    markBackup();
-    toast("Fichier de sauvegarde téléchargé");
+  function loadSnaps() {
+    try { var a = JSON.parse(localStorage.getItem(SNAP_KEY)); return Array.isArray(a) ? a : []; }
+    catch (e) { return []; }
   }
-
-  function applyBackup(text) {
-    var data = JSON.parse(text);
-    if (!data || !Array.isArray(data.tasks)) throw new Error("format");
-    S = migrate(deepMerge(clone(DEFAULT), data));
-    openTasks = Object.create(null);
-    save(); syncSettingsUI(); renderAll();
-    toast("Sauvegarde restaurée ✅");
-    closeSettings();
-  }
-
-  function fmtAgo(ts) {
-    if (!ts) return "aucune sauvegarde effectuée";
-    var d = Math.floor((Date.now() - ts) / 86400000);
-    if (d <= 0) return "dernière sauvegarde : aujourd'hui";
-    if (d === 1) return "dernière sauvegarde : hier";
-    return "dernière sauvegarde : il y a " + d + " jours";
-  }
-  function syncBackupUI() {
-    var sub = $("#backupSub");
-    if (sub) {
-      sub.textContent = fmtAgo(S.lastBackup);
-      sub.style.color = (!S.lastBackup || Date.now() - S.lastBackup > BACKUP_MAX_AGE) ? "var(--red)" : "var(--text-dim)";
+  function saveSnaps(a) {
+    try { localStorage.setItem(SNAP_KEY, JSON.stringify(a)); return true; }
+    catch (e) {
+      while (a.length > 2) {
+        a.shift();
+        try { localStorage.setItem(SNAP_KEY, JSON.stringify(a)); return true; } catch (e2) {}
+      }
+      return false;
     }
   }
 
-  $("#setExport").addEventListener("click", exportBackup);
-  $("#setCopy").addEventListener("click", function () {
-    var txt = backupText();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(txt).then(function () {
-        markBackup();
-        toast("Sauvegarde copiée — colle-la dans tes notes ou un mail");
-      }).catch(function () { fallbackCopy(txt); });
-    } else { fallbackCopy(txt); }
-  });
-  function fallbackCopy(txt) {
-    var ta = $("#pasteBox");
-    $("#pasteWrap").hidden = false;
-    ta.value = txt; ta.focus(); ta.select();
-    var ok = false;
-    try { ok = document.execCommand("copy"); } catch (e) {}
-    if (ok) { markBackup(); toast("Sauvegarde copiée"); }
-    else toast("Sélectionne le texte affiché et copie-le à la main");
+  /* Crée un point. kind: "manual" | "auto" | "pre-restore" | "pre-wipe" */
+  function snapshot(kind, label) {
+    var snaps = loadSnaps();
+    var payload = JSON.stringify(S);
+    if (snaps.length && snaps[snaps.length - 1].payload === payload) return; // rien de neuf
+    snaps.push({
+      id: uid(), ts: Date.now(), kind: kind || "manual",
+      label: label || "", n: S.tasks.length, payload: payload
+    });
+    while (snaps.length > SNAP_MAX) {
+      var i = -1;
+      for (var k = 0; k < snaps.length; k++) if (snaps[k].kind === "auto") { i = k; break; }
+      snaps.splice(i >= 0 ? i : 0, 1);
+    }
+    saveSnaps(snaps);
   }
+
+  function autoSnapshotDaily() {
+    var snaps = loadSnaps(), lastAuto = 0;
+    snaps.forEach(function (s) { if (s.kind === "auto" && s.ts > lastAuto) lastAuto = s.ts; });
+    if (Date.now() - lastAuto > 20 * 3600000) snapshot("auto", "Automatique");
+  }
+
+  function snapLine(s) {
+    var d = new Date(s.ts);
+    var when = cap(relLabel(ymd(d))) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+    var kindTxt = { auto: "auto", "pre-restore": "avant restauration", "pre-wipe": "avant effacement", manual: "manuel" }[s.kind] || "";
+    var meta = s.n + " tâche" + (s.n > 1 ? "s" : "") + (kindTxt ? " · " + kindTxt : "");
+    return { when: when, meta: meta };
+  }
+  function renderSnaps() {
+    var box = $("#snapList");
+    if (!box) return;
+    var snaps = loadSnaps().slice().reverse();
+    if (!snaps.length) { box.innerHTML = '<div class="snap-empty">Aucun point pour l\'instant.</div>'; return; }
+    box.innerHTML = snaps.map(function (s) {
+      var L = snapLine(s);
+      return '<div class="snap" data-id="' + s.id + '">' +
+        '<div class="snap-info"><b>' + esc(L.when) + "</b><small>" + esc(L.meta) + "</small></div>" +
+        '<button class="link-btn" data-snap="restore">Restaurer</button>' +
+        '<button class="snap-del" data-snap="del" aria-label="Supprimer">🗑</button>' +
+      "</div>";
+    }).join("");
+    box.querySelectorAll(".snap").forEach(function (el) {
+      var id = el.getAttribute("data-id");
+      el.querySelector('[data-snap="restore"]').onclick = function () { restoreSnapshot(id); };
+      el.querySelector('[data-snap="del"]').onclick = function () {
+        saveSnaps(loadSnaps().filter(function (x) { return x.id !== id; }));
+        renderSnaps();
+      };
+    });
+  }
+
+  function restoreSnapshot(id) {
+    var snaps = loadSnaps(), s = null;
+    for (var i = 0; i < snaps.length; i++) if (snaps[i].id === id) s = snaps[i];
+    if (!s) return;
+    if (!confirm("Revenir à ce point ? L'état actuel sera remplacé — un point de sécurité est créé juste avant.")) return;
+    snapshot("pre-restore", "");
+    try {
+      S = migrate(deepMerge(clone(DEFAULT), JSON.parse(s.payload)));
+    } catch (e) { toast("Point illisible"); return; }
+    openTasks = Object.create(null);
+    dismissed = { notif: false, install: false, backup: false };
+    save(); syncSettingsUI(); renderAll(); renderSnaps();
+    toast("Point restauré ✅");
+  }
+
+  $("#snapSave").addEventListener("click", function () {
+    snapshot("manual", "");
+    renderSnaps();
+    toast("Point de restauration enregistré ✅");
+  });
+
+  /* ---- Transfert vers un autre appareil (fichier) ---- */
+  function applyBackup(text) {
+    var data = JSON.parse(text);
+    if (!data || !Array.isArray(data.tasks)) throw new Error("format");
+    snapshot("pre-restore", "");
+    S = migrate(deepMerge(clone(DEFAULT), data));
+    openTasks = Object.create(null);
+    save(); syncSettingsUI(); renderAll();
+    toast("Données importées ✅");
+    closeSettings();
+  }
+  $("#setExport").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(S, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "cap-" + today() + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    toast("Fichier exporté");
+  });
   $("#setImport").addEventListener("click", function () { $("#importFile").click(); });
   $("#importFile").addEventListener("change", function (e) {
     var f = e.target.files[0]; if (!f) return;
@@ -1939,16 +1968,6 @@
     };
     r.readAsText(f);
     e.target.value = "";
-  });
-  $("#setPaste").addEventListener("click", function () {
-    $("#pasteWrap").hidden = false;
-    $("#pasteBox").value = "";
-    $("#pasteBox").focus();
-  });
-  $("#pasteCancel").addEventListener("click", function () { $("#pasteWrap").hidden = true; });
-  $("#pasteConfirm").addEventListener("click", function () {
-    try { applyBackup($("#pasteBox").value.trim()); $("#pasteWrap").hidden = true; }
-    catch (err) { toast("Texte de sauvegarde invalide"); }
   });
 
   /* ---- Protection contre l'effacement (stockage persistant) ---- */
@@ -1976,14 +1995,14 @@
   });
 
   $("#setWipe").addEventListener("click", function () {
-    if (!confirm("Effacer toutes les tâches, stats et réglages ? Action irréversible.")) return;
+    if (!confirm("Effacer toutes les tâches, stats et réglages ?\nUn point de restauration est gardé pour pouvoir revenir en arrière.")) return;
+    snapshot("pre-wipe", "");
     localStorage.removeItem(KEY);
     S = clone(DEFAULT);
     openTasks = Object.create(null);
     dismissed = { notif: false, install: false, backup: false };
-    save(); syncSettingsUI(); renderAll();
-    closeSettings();
-    toast("Tout a été effacé");
+    save(); syncSettingsUI(); renderAll(); renderSnaps();
+    toast("Effacé — un point de restauration a été gardé");
   });
 
   /* ============================================================
@@ -2169,6 +2188,7 @@
   /* ============================================================
      DÉMARRAGE
   ============================================================ */
+  autoSnapshotDaily();
   carryOver();
   recordHistory();
   syncSettingsUI();
