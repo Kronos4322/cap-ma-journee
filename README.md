@@ -38,20 +38,27 @@ Elle fonctionne **hors-ligne** et **sans compte** : toutes les données restent 
 
 ## Mettre l'app sur le téléphone
 
-L'app est un site statique (`index.html` + quelques fichiers). Il faut la servir en HTTP(S) pour pouvoir l'« installer ». Trois options, de la plus simple à la plus autonome.
+L'app est un site statique (`index.html` + quelques fichiers). Il faut la servir en HTTP(S) pour pouvoir l'« installer ».
 
-### Option A - Hébergement gratuit en 2 minutes (recommandé)
-1. Va sur **https://app.netlify.com/drop**.
-2. Glisse-dépose **tout le dossier `TO DO LIST`** dans la page.
-3. Netlify donne une URL du type `https://truc-machin.netlify.app`.
-4. Ouvre cette URL sur le téléphone :
-   - **Android / Chrome** : menu ⋮ → *Ajouter à l'écran d'accueil* (ou une bannière « Installer »).
-   - **iPhone / Safari** : bouton *Partager* → *Sur l'écran d'accueil*.
-5. L'icône apparaît comme une vraie app, en plein écran, et marche hors-ligne.
+### En ligne (déjà en place — GitHub Pages)
 
-> GitHub Pages, Cloudflare Pages ou Vercel font pareil si tu préfères.
+- **App :** https://kronos4322.github.io/cap-ma-journee/
+- **Code :** https://github.com/Kronos4322/cap-ma-journee
 
-### Option B - Depuis ton PC, sur le même Wi-Fi
+Installer sur le téléphone : ouvre l'URL de l'app puis
+- **Android / Chrome** : menu ⋮ → *Ajouter à l'écran d'accueil* (ou la bannière « Installer ») ;
+- **iPhone / Safari** (pas Chrome iOS) : bouton *Partager* → *Sur l'écran d'accueil*.
+
+L'icône apparaît comme une vraie app, en plein écran, et marche hors-ligne.
+
+**Mettre à jour l'app en ligne :**
+```bash
+cd "C:\Users\CaMiL\Desktop\PROGRAMMES APPLICATIONS CLAUDE\TO DO LIST"
+git add -A && git commit -m "maj" && git push
+```
+GitHub reconstruit la page en ~30 s. Pense à incrémenter `CACHE` dans `sw.js` (`cap-v3` → `cap-v4`…) pour que la bannière « Nouvelle version » s'affiche sur les téléphones déjà équipés.
+
+### Variante - Depuis ton PC, sur le même Wi-Fi
 ```bash
 cd "C:\Users\CaMiL\Desktop\PROGRAMMES APPLICATIONS CLAUDE\TO DO LIST"
 python -m http.server 4173
@@ -59,12 +66,12 @@ python -m http.server 4173
 Trouve l'IP locale du PC (`ipconfig` → « Adresse IPv4 », ex. `192.168.1.20`), puis sur le téléphone ouvre `http://192.168.1.20:4173`.
 Limite : les notifications/alarmes en arrière-plan sont fiables seulement en HTTPS ; le PC doit rester allumé.
 
-### Option C - Ouvrir le fichier directement
+### Variante - Ouvrir le fichier directement
 Tu peux copier `index.html` sur le téléphone et l'ouvrir : la to-do list, les stats et le minuteur marchent.
-En revanche l'installation « écran d'accueil », le mode hors-ligne géré et les notifications système ne sont pas garantis en `file://`. Préfère l'option A.
+En revanche l'installation « écran d'accueil », le mode hors-ligne géré et les notifications système ne sont pas garantis en `file://`. Préfère l'URL en ligne.
 
-### Option D - Vraie app Android (.apk / Play Store)
-Une fois l'app en ligne (option A), va sur **https://www.pwabuilder.com**, colle l'URL, et génère un paquet Android (TWA). Tu obtiens un `.apk` installable ou un `.aab` pour le Play Store.
+### Variante - Vraie app Android (.apk / Play Store)
+Va sur **https://www.pwabuilder.com**, colle l'URL `https://kronos4322.github.io/cap-ma-journee/`, et génère un paquet Android (TWA). Tu obtiens un `.apk` installable ou un `.aab` pour le Play Store.
 Utile si tu veux une icône « application » officielle et un comportement un peu meilleur en arrière-plan. Sur **iPhone**, il n'y a pas d'équivalent gratuit : l'ajout à l'écran d'accueil (option A) est la seule voie, et les alarmes app fermée resteront bridées quoi qu'il arrive.
 
 ---
